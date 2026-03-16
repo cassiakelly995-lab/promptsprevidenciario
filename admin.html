@@ -153,7 +153,7 @@ const SENHA_ADMIN = "prev2025";
 const BASE_URL = "https://cassiakelly995-lab.github.io/promptsprevidenciario/index.html";
 
 // Usuário fixo (sempre presente, não pode ser revogado)
-const FIXOS = ["Helen_cristina"];
+const FIXOS = ["Dra_Valeria"];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FIREBASE — NÓ EXCLUSIVO: acessos_prev
@@ -202,8 +202,8 @@ function sair() {
 function iniciarPainel() {
     db.ref(REF).on('value', snap => {
         const dados = snap.val() || {};
-        if (!dados['Helen_cristina']) {
-            db.ref(REF + '/Helen_cristina').set({ nome:'HELEN CRISTINA', criadoEm:Date.now(), usos:0 });
+        if (!dados['Dra_Valeria']) {
+            db.ref(REF + '/Dra_Valeria').set({ nome:'DRA. VALÉRIA', criadoEm:Date.now(), usos:0 });
         }
         renderizar(dados);
     });
