@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PREVIDENCIÁRIO V9 | CÁSSIA PROMPT</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #04060a; --card: rgba(8,12,20,0.98); --text: #e8eaf0;
+            --subtext: rgba(200,210,230,0.45);
+            --gold: linear-gradient(135deg,#bf953f 0%,#fcf6ba 45%,#b38728 70%,#fbf5b7 100%);
+            --gold-s: #bf953f; --gold-light: #fcf6ba;
+            --border: rgba(191,149,63,0.18); --border-h: rgba(191,149,63,0.5);
+            --input-bg: rgba(255,255,255,0.025);
+            --danger: #c0392b; --success: #1d8a4e; --glow: 0 0 60px rgba(191,149,63,0.06);
+        }
+        body.light-mode {
+            --bg:#f4f0e8; --card:rgba(255,253,245,0.98); --text:#1a1005;
+            --subtext:rgba(30,20,5,0.45); --border:rgba(139,100,20,0.25); --input-bg:rgba(0,0,0,0.03);
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;transition:background .4s,color .4s;}
+        body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 50% 40% at 10% 15%,rgba(191,149,63,.05) 0%,transparent 70%),radial-gradient(ellipse 35% 50% at 90% 85%,rgba(26,74,138,.06) 0%,transparent 70%);pointer-events:none;z-index:0;}
+
+        /* BLOQUEIO */
+        #tela-bloqueio{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1000;background:#04060a;}
+        .bloq-box{text-align:center;padding:60px 40px;max-width:440px;animation:fadeUp .8s ease both;}
+        .bloq-logo{font-family:'Playfair Display',serif;font-size:11px;font-weight:400;letter-spacing:10px;background:var(--gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase;margin-bottom:16px;}
+        .bloq-ico{font-size:46px;margin-bottom:22px;opacity:.35;}
+        .bloq-titulo{font-size:13px;font-weight:700;letter-spacing:4px;color:var(--danger);text-transform:uppercase;margin-bottom:12px;}
+        .bloq-msg{font-size:13px;color:var(--subtext);line-height:1.9;}
+
+        /* APP */
+        #app{display:none;min-height:100vh;flex-direction:column;}
+
+        /* TOPBAR */
+        .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 50px;border-bottom:1px solid var(--border);background:rgba(4,6,10,.88);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;gap:16px;flex-wrap:wrap;}
+        body.light-mode .topbar{background:rgba(244,240,232,.93);}
+        .topbar-logo{font-family:'Playfair Display',serif;font-size:12px;font-weight:700;letter-spacing:6px;background:var(--gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase;}
+        .topbar-sub{font-size:9px;font-weight:600;color:var(--subtext);letter-spacing:3px;text-transform:uppercase;margin-top:3px;}
+        .topbar-btns{display:flex;gap:8px;flex-wrap:wrap;}
+        .ctrl-btn{background:none;border:1px solid var(--border);color:var(--subtext);padding:8px 14px;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;transition:.2s;}
+        .ctrl-btn:hover{border-color:var(--gold-s);color:var(--gold-s);}
+
+        /* MAIN */
+        main{padding:50px 20px;display:flex;flex-direction:column;align-items:center;}
+
+        /* HERO */
+        .hero{text-align:center;margin-bottom:46px;max-width:680px;}
+        .hero-badge{display:inline-block;font-size:8px;font-weight:800;letter-spacing:4px;color:var(--gold-s);text-transform:uppercase;border:1px solid var(--border);padding:6px 16px;border-radius:2px;margin-bottom:18px;}
+        .hero-title{font-family:'Playfair Display',serif;font-size:clamp(26px,5vw,46px);font-weight:900;line-height:1.15;margin-bottom:14px;}
+        .hero-title span{background:var(--gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        .hero-desc{font-size:14px;color:var(--subtext);line-height:1.7;max-width:500px;margin:0 auto;font-weight:300;}
+
+        /* TIPOS */
+        .tipo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:28px;width:100%;max-width:950px;}
+        .tipo-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:16px 12px;cursor:pointer;transition:.22s;text-align:center;}
+        .tipo-card:hover,.tipo-card.active{border-color:var(--gold-s);background:rgba(191,149,63,.06);}
+        .tipo-card.active .tipo-nome{color:var(--gold-s);}
+        .tipo-icone{font-size:21px;margin-bottom:7px;transition:.2s;}
+        .tipo-nome{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--subtext);transition:.2s;}
+
+        /* PANEL */
+        .glass-panel{background:var(--card);width:100%;max-width:950px;border-radius:10px;border:1px solid var(--border);padding:clamp(22px,5vw,50px);box-shadow:var(--glow);backdrop-filter:blur(20px);position:relative;overflow:hidden;}
+        .glass-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);}
+
+        .div-label{font-size:9px;font-weight:800;letter-spacing:3px;color:var(--gold-s);text-transform:uppercase;display:flex;align-items:center;gap:14px;margin:26px 0 18px;}
+        .div-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+        .field-group{margin-bottom:18px;}
+        .field-label{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--gold-s);text-transform:uppercase;display:block;margin-bottom:8px;}
+
+        input,textarea,select{width:100%;background:var(--input-bg);border:1px solid var(--border);padding:15px 17px;border-radius:4px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:400;outline:none;transition:.25s;resize:vertical;}
+        input::placeholder,textarea::placeholder{color:var(--subtext);font-weight:300;}
+        input:focus,textarea:focus,select:focus{border-color:var(--gold-s);background:rgba(191,149,63,.025);}
+        input.invalid,select.invalid{border-color:#e05252!important;}
+        select{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23bf953f' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 17px center;background-size:10px;background-color:var(--input-bg);}
+        select option{background:#111;color:#e8eaf0;}
+        body.light-mode select option{background:#fff;color:#1a1005;}
+
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+        @media(max-width:640px){.grid-2{grid-template-columns:1fr;}}
+
+        .pdf-btn{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--gold-s);letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:1px dashed var(--border);padding:12px 17px;border-radius:4px;margin-bottom:18px;transition:.2s;background:rgba(191,149,63,.03);}
+        .pdf-btn:hover{border-color:var(--gold-s);background:rgba(191,149,63,.07);}
+
+        .alerta-box{background:rgba(26,74,138,.08);border:1px solid rgba(26,74,138,.3);border-left:3px solid #4d8ad4;border-radius:4px;padding:13px 17px;margin-bottom:18px;font-size:11px;color:rgba(150,180,230,.8);line-height:1.7;}
+        body.light-mode .alerta-box{color:rgba(20,50,120,.75);background:rgba(26,74,138,.05);border-color:rgba(26,74,138,.2);border-left-color:#1a4a8a;}
+        .alerta-box strong{color:#4d8ad4;font-weight:800;}
+
+        .efet-wrap{background:rgba(191,149,63,.05);border:1px solid var(--border);border-radius:6px;padding:16px 19px;margin:18px 0;}
+        .efet-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+        .efet-name{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--gold-s);text-transform:uppercase;}
+        .efet-pct{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--gold-s);}
+        .track{width:100%;height:5px;background:rgba(255,255,255,.06);border-radius:10px;overflow:hidden;margin-bottom:6px;}
+        .track-fill{height:100%;background:var(--gold);transition:width .5s,background .5s;border-radius:10px;}
+        .efet-hint{font-size:11px;color:var(--subtext);line-height:1.6;}
+
+        .tom-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+        .tom-btn{flex:1;min-width:88px;background:var(--input-bg);border:1px solid var(--border);padding:10px 7px;border-radius:4px;color:var(--subtext);font-size:9px;font-weight:800;letter-spacing:1.5px;cursor:pointer;text-align:center;text-transform:uppercase;transition:.2s;}
+        .tom-btn.active{background:var(--gold);color:#000;border-color:transparent;}
+
+        .prog-area{display:none;margin-bottom:18px;}
+        .prog-row{margin-bottom:12px;}
+        .prog-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--gold-s);text-transform:uppercase;display:flex;justify-content:space-between;margin-bottom:6px;}
+        .prog-track{width:100%;height:4px;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden;}
+        .prog-fill{height:100%;background:var(--gold);width:0%;transition:width .15s;border-radius:10px;}
+
+        .char-info{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--subtext);text-align:right;margin-top:5px;}
+        .char-info span{color:var(--gold-s);}
+
+        .btn-execute{width:100%;background:var(--gold);color:#000;border:none;padding:22px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:.3s;margin-top:8px;}
+        .btn-execute:hover{filter:brightness(1.15);}
+        .btn-outline{width:100%;background:transparent;color:var(--gold-s);border:1px solid var(--gold-s);padding:14px;border-radius:4px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:.2s;margin-top:9px;}
+        .btn-outline:hover{background:rgba(191,149,63,.08);}
+
+        #res-box{display:none;margin-top:38px;padding-top:28px;border-top:1px solid var(--border);flex-direction:column;gap:13px;}
+        .res-label{font-size:9px;font-weight:800;letter-spacing:3px;color:var(--gold-s);text-transform:uppercase;}
+        #res{width:100%;min-height:380px;max-height:600px;background:#000;border:1px solid #bf953f;color:#fcf6ba;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.7;padding:26px;border-radius:6px;resize:vertical;outline:none;}
+        body.light-mode #res{background:#1a1209;}
+        .res-actions{display:flex;gap:10px;flex-wrap:wrap;}
+        .btn-copy{flex:1;background:transparent;color:var(--gold-s);border:1px solid var(--gold-s);padding:14px;border-radius:4px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.2s;}
+        .btn-copy:hover,.btn-copy.copied{background:var(--gold);color:#000;border-color:transparent;}
+        .btn-word{flex:1;background:var(--gold);color:#000;border:none;padding:14px;border-radius:4px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.2s;}
+        .btn-word:hover{filter:brightness(1.15);}
+
+        .hist-section{margin-top:28px;border-top:1px solid var(--border);padding-top:22px;display:none;}
+        .hist-title{font-size:9px;font-weight:800;letter-spacing:3px;color:var(--gold-s);text-transform:uppercase;margin-bottom:14px;}
+        .hist-item{background:rgba(191,149,63,.04);border:1px solid var(--border);border-radius:5px;padding:13px 15px;margin-bottom:9px;cursor:pointer;transition:.2s;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+        .hist-item:hover{border-color:var(--gold-s);background:rgba(191,149,63,.08);}
+        .hist-acao{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+        .hist-meta{font-size:10px;color:var(--subtext);margin-top:3px;}
+        .hist-arrow{color:var(--gold-s);font-size:13px;flex-shrink:0;}
+
+        #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gold);color:#000;padding:12px 26px;border-radius:3px;font-size:10px;font-weight:900;letter-spacing:3px;text-transform:uppercase;opacity:0;transition:.3s;z-index:9999;pointer-events:none;white-space:nowrap;}
+        #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+        footer{border-top:1px solid var(--border);padding:38px 28px;text-align:center;margin-top:auto;}
+        .ft-lic{display:inline-block;background:rgba(191,149,63,.05);border:1px solid var(--border);border-radius:3px;padding:13px 26px;margin-bottom:18px;}
+        .ft-lic-label{font-size:8px;color:var(--subtext);letter-spacing:3px;text-transform:uppercase;margin-bottom:5px;}
+        .ft-lic-nome{font-family:'Playfair Display',serif;font-size:14px;font-weight:900;background:var(--gold);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:3px;text-transform:uppercase;}
+        .ft-aviso{font-size:9px;color:var(--subtext);line-height:2.2;max-width:680px;margin:0 auto;letter-spacing:.5px;}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+        @media(max-width:700px){.topbar{padding:14px 18px;}main{padding:28px 10px;}.tipo-grid{grid-template-columns:repeat(3,1fr);}}
+    </style>
+</head>
+<body>
+<div id="toast"></div>
+
+<div id="tela-bloqueio">
+    <div class="bloq-box">
+        <div class="bloq-logo">Cássia Prompt</div>
+        <div class="bloq-ico">⚖️</div>
+        <div class="bloq-titulo" id="bTit">Verificando Acesso...</div>
+        <div class="bloq-msg" id="bMsg">Aguarde enquanto validamos sua licença.</div>
+    </div>
+</div>
+
+<div id="app">
+    <div class="topbar">
+        <div>
+            <div class="topbar-logo">Cássia Prompt</div>
+            <div class="topbar-sub">Previdenciário V9 Power Edition</div>
+        </div>
+        <div class="topbar-btns">
+            <button class="ctrl-btn" onclick="toggleTema()">☀️ Claro/Escuro</button>
+            <button class="ctrl-btn" onclick="limpar()">Apagar Tudo</button>
+        </div>
+    </div>
+
+    <main>
+        <div class="hero">
+            <div class="hero-badge">⚖️ Especialidade — Direito Previdenciário Brasileiro</div>
+            <h1 class="hero-title">Prompts de <span>máxima precisão</span> para IA</h1>
+            <p class="hero-desc">Especializado em Lei 8.213/91, EC 103/2019, regulamentos do INSS e jurisprudência do STJ/TNU. Zero alucinação — a IA usa apenas o que você fornecer.</p>
+        </div>
+
+        <div class="tipo-grid">
+            <div class="tipo-card" data-tipo="beneficio" onclick="selecionarTipo(this)"><div class="tipo-icone">🏥</div><div class="tipo-nome">Análise de Benefício</div></div>
+            <div class="tipo-card" data-tipo="recurso" onclick="selecionarTipo(this)"><div class="tipo-icone">📋</div><div class="tipo-nome">Recurso / Contestação</div></div>
+            <div class="tipo-card" data-tipo="planejamento" onclick="selecionarTipo(this)"><div class="tipo-icone">📊</div><div class="tipo-nome">Planejamento Prev.</div></div>
+            <div class="tipo-card" data-tipo="inicial" onclick="selecionarTipo(this)"><div class="tipo-icone">⚖️</div><div class="tipo-nome">Petição Inicial</div></div>
+            <div class="tipo-card" data-tipo="calculo" onclick="selecionarTipo(this)"><div class="tipo-icone">🧮</div><div class="tipo-nome">Cálculo / RMI</div></div>
+            <div class="tipo-card active" data-tipo="estrategia" onclick="selecionarTipo(this)"><div class="tipo-icone">🎯</div><div class="tipo-nome">Estratégia Jurídica</div></div>
+        </div>
+
+        <div class="glass-panel">
+
+            <div class="alerta-box">
+                <strong>🛡 ANTI-ALUCINAÇÃO ATIVO:</strong> O prompt instrui a IA a trabalhar <strong>exclusivamente</strong> com os dados fornecidos. Quando faltar algo, a IA escreve <em>"⚠ REVISÃO NECESSÁRIA — [dado ausente]"</em> em vez de inventar. Valide sempre com o profissional responsável.
+            </div>
+
+            <label class="pdf-btn" onclick="document.getElementById('pdf-up').click()">📎 IMPORTAR PDF (CNIS, CARTA DO INSS, LAUDO, SENTENÇA...)</label>
+            <input type="file" id="pdf-up" accept="application/pdf" style="display:none" onchange="lerPDF(this)">
+
+            <div class="prog-area" id="prog-area">
+                <div class="prog-row"><div class="prog-label"><span>Lendo base legal</span><span id="v1">0%</span></div><div class="prog-track"><div class="prog-fill" id="b1"></div></div></div>
+                <div class="prog-row"><div class="prog-label"><span>Montando estrutura</span><span id="v2">0%</span></div><div class="prog-track"><div class="prog-fill" id="b2"></div></div></div>
+                <div class="prog-row"><div class="prog-label"><span>Calibrando expertise</span><span id="v3">0%</span></div><div class="prog-track"><div class="prog-fill" id="b3"></div></div></div>
+            </div>
+
+            <div class="div-label">Identificação do Caso</div>
+
+            <div class="grid-2">
+                <div class="field-group">
+                    <label class="field-label">Tipo de Benefício / Ação</label>
+                    <select id="tipo-beneficio" onchange="limparInv(this);calcEfet()">
+                        <option value="" disabled selected>Selecione o benefício ou tipo de ação</option>
+                        <optgroup label="── Aposentadorias">
+                            <option value="aposIdade">Aposentadoria por Idade (Urbana)</option>
+                            <option value="aposIdadeRural">Aposentadoria por Idade Rural</option>
+                            <option value="aposTempo">Apos. por Tempo de Contribuição (pré-EC 103)</option>
+                            <option value="aposTransicao">Apos. por Regras de Transição (EC 103/2019)</option>
+                            <option value="aposProgramada">Aposentadoria Programada (pós-EC 103)</option>
+                            <option value="aposPontos">Aposentadoria por Pontos (Progressiva)</option>
+                            <option value="aposEspecial">Aposentadoria Especial (Insalubridade)</option>
+                            <option value="aposIncapacidade">Apos. por Incapacidade Permanente (Invalidez)</option>
+                        </optgroup>
+                        <optgroup label="── Benefícios por Incapacidade">
+                            <option value="auxIncapacidade">Auxílio por Incapacidade Temporária</option>
+                            <option value="auxAcidente">Auxílio-Acidente</option>
+                        </optgroup>
+                        <optgroup label="── Família / Dependentes">
+                            <option value="pensao">Pensão por Morte</option>
+                            <option value="salMaternidade">Salário-Maternidade</option>
+                            <option value="salFamilia">Salário-Família</option>
+                        </optgroup>
+                        <optgroup label="── Assistenciais LOAS">
+                            <option value="bpcIdoso">BPC — Idoso (LOAS)</option>
+                            <option value="bpcDeficiente">BPC — Pessoa com Deficiência (LOAS)</option>
+                        </optgroup>
+                        <optgroup label="── Ações e Procedimentos">
+                            <option value="recursos">Recurso Administrativo INSS / CRPS</option>
+                            <option value="jef">Ação no JEF (Juizado Especial Federal)</option>
+                            <option value="revisao">Revisão de Benefício</option>
+                            <option value="reconhecimento">Reconhecimento de Tempo Especial</option>
+                            <option value="calculo">Cálculo de RMI / DIB / Evolução</option>
+                            <option value="planejamento">Planejamento Previdenciário</option>
+                            <option value="outro">Outro / Especificar nos fatos</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Objetivo do Prompt</label>
+                    <input type="text" id="objetivo" placeholder="Ex: Obter deferimento, calcular DIB, estruturar recurso..." oninput="calcEfet()">
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="field-group">
+                    <label class="field-label">Nome do Segurado / Cliente</label>
+                    <input type="text" id="segurado" placeholder="Nome completo" oninput="calcEfet()">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Destinatário do Documento</label>
+                    <input type="text" id="destinatario" placeholder="Ex: INSS, Juiz Federal, CRPS, cliente..." oninput="calcEfet()">
+                </div>
+            </div>
+
+            <div class="div-label">Dados do Caso — Base de Fatos</div>
+
+            <div class="alerta-box" style="font-size:10px;margin-bottom:13px;">
+                <strong>📌 QUANTO MAIS DADOS, MELHOR O PROMPT:</strong> Cole o CNIS, cartas de indeferimento, laudos, perícias, sentença, histórico de vínculos, tempo de contribuição, NIT/CPF, datas relevantes. A IA trabalhará <em>somente</em> com esses dados.
+            </div>
+
+            <div class="field-group">
+                <label class="field-label">Fatos, Dados e Documentos do Caso</label>
+                <textarea id="fatos" rows="12" placeholder="Cole aqui: CNIS, cartas do INSS, laudos médicos, datas de vínculos, tempo de contribuição, motivo do indeferimento, jurisprudência que deseja usar, etc." oninput="countChars();calcEfet()"></textarea>
+                <div class="char-info">Caracteres: <span id="charSpan">0</span></div>
+            </div>
+
+            <div class="div-label">Configuração do Prompt</div>
+
+            <div class="field-group">
+                <label class="field-label">Tom da Escrita</label>
+                <div class="tom-row">
+                    <button class="tom-btn active" data-tom="tecnico" onclick="selTom(this)">TÉCNICO-JURÍDICO</button>
+                    <button class="tom-btn" data-tom="formal" onclick="selTom(this)">FORMAL</button>
+                    <button class="tom-btn" data-tom="persuasivo" onclick="selTom(this)">PERSUASIVO</button>
+                    <button class="tom-btn" data-tom="cliente" onclick="selTom(this)">LINGUAGEM CLIENTE</button>
+                </div>
+            </div>
+
+            <div class="efet-wrap">
+                <div class="efet-row"><span class="efet-name">Completude do Prompt</span><span class="efet-pct" id="efet-pct">0%</span></div>
+                <div class="track"><div class="track-fill" id="efet-fill" style="width:0%"></div></div>
+                <div class="efet-hint" id="efet-hint">Selecione o tipo de benefício e preencha os dados.</div>
+            </div>
+
+            <button class="btn-execute" onclick="executar()">⚡ GERAR PROMPT PREVIDENCIÁRIO V9</button>
+
+            <div id="res-box">
+                <span class="res-label">Prompt Gerado — Copie e cole em qualquer IA</span>
+                <textarea id="res" readonly></textarea>
+                <div class="res-actions">
+                    <button class="btn-copy" id="btnCopy" onclick="copiarRes()">📋 COPIAR PROMPT</button>
+                    <button class="btn-word" onclick="exportarWord()">💾 EXPORTAR .DOC</button>
+                </div>
+                <button class="btn-outline" onclick="novaConsulta()">+ NOVO CASO</button>
+            </div>
+
+            <div class="hist-section" id="hist-section">
+                <div class="hist-title">⏱ Últimas Consultas</div>
+                <div id="hist-lista"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <div class="ft-lic">
+            <div class="ft-lic-label">Licença nominal concedida a</div>
+            <div class="ft-lic-nome" id="footer-nome">carregando...</div>
+        </div>
+        <div class="ft-aviso">
+            <strong>CÁSSIA PROMPT ® | PREVIDENCIÁRIO V9 POWER EDITION</strong><br>
+            Licença nominal, individual e intransferível. Proibido compartilhamento ou repasse.<br>
+            Este sistema gera prompts para uso em inteligências artificiais. A responsabilidade pelo conteúdo aplicado é exclusivamente do profissional licenciado.<br>
+            Os prompts são estruturados para minimizar alucinação, mas não substituem revisão humana especializada.<br>
+            © 2025 Cássia Prompt. Todos os direitos reservados.
+        </div>
+    </footer>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FIREBASE — BANCO EXCLUSIVO PREVIDENCIÁRIO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const firebaseConfig = {
+    apiKey: "AIzaSyCvQ5osv0sxI8PVH2aUspp1PMtS6QkR3Y0",
+    authDomain: "cassia-previdenciario.firebaseapp.com",
+    databaseURL: "https://cassia-previdenciario-default-rtdb.firebaseio.com",
+    projectId: "cassia-previdenciario",
+    storageBucket: "cassia-previdenciario.firebasestorage.app",
+    messagingSenderId: "451379526206",
+    appId: "1:451379526206:web:892831ee31d91462b42f6f"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const REF = 'acessos_prev';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// VERIFICAÇÃO DE ACESSO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function verificarAcesso() {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id) { bloqueado("ACESSO NEGADO", "Nenhum código de acesso encontrado.<br>Solicite seu link autorizado."); return; }
+    db.ref(REF + '/' + id).once('value').then(snap => {
+        if (snap.exists()) {
+            const d = snap.val();
+            db.ref(REF + '/' + id).update({ ultimoUso: Date.now(), usos: (d.usos || 0) + 1 });
+            document.getElementById('footer-nome').innerText = d.nome || 'LICENCIADO';
+            const bl = document.getElementById('tela-bloqueio');
+            bl.style.transition = '.6s'; bl.style.opacity = '0';
+            setTimeout(() => { bl.style.display = 'none'; const a = document.getElementById('app'); a.style.display = 'flex'; }, 600);
+            renderHistorico();
+        } else {
+            bloqueado("ACESSO REVOGADO", "Seu acesso foi desativado.<br>Entre em contato com a administradora.");
+        }
+    }).catch(() => bloqueado("ERRO DE CONEXÃO", "Verifique sua internet e tente novamente."));
+}
+function bloqueado(t, m) { document.getElementById('bTit').innerText = t; document.getElementById('bMsg').innerHTML = m; }
+setTimeout(verificarAcesso, 800);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UTILIDADES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+function toggleTema() { document.body.classList.toggle('light-mode'); }
+function limparInv(el) { el.classList.remove('invalid'); }
+function selecionarTipo(el) { document.querySelectorAll('.tipo-card').forEach(c => c.classList.remove('active')); el.classList.add('active'); }
+
+let tomSel = 'tecnico';
+const tomDesc = {
+    tecnico: "Linguagem técnico-jurídica com terminologia precisa da área previdenciária, citações de artigos de lei e jurisprudência aplicável.",
+    formal: "Linguagem formal e culta, adequada para peças processuais e documentos oficiais.",
+    persuasivo: "Linguagem persuasiva e estratégica, com ênfase nos pontos favoráveis ao segurado.",
+    cliente: "Linguagem acessível e clara para que o segurado (leigo) compreenda plenamente."
+};
+function selTom(el) { document.querySelectorAll('.tom-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); tomSel = el.dataset.tom; calcEfet(); }
+
+function countChars() { document.getElementById('charSpan').innerText = document.getElementById('fatos').value.length.toLocaleString('pt-BR'); }
+
+function calcEfet() {
+    const tb = document.getElementById('tipo-beneficio').value;
+    const obj = document.getElementById('objetivo').value.trim();
+    const seg = document.getElementById('segurado').value.trim();
+    const dest = document.getElementById('destinatario').value.trim();
+    const f = document.getElementById('fatos').value.trim();
+    let s = 0;
+    if (tb) s += 25; if (obj.length > 4) s += 15; if (seg.length > 3) s += 10;
+    if (dest.length > 3) s += 5; if (f.length >= 100) s += 10; if (f.length >= 400) s += 10;
+    if (f.length >= 900) s += 10; if (f.length >= 1800) s += 10; if (tomSel) s += 5;
+    s = Math.min(s, 100);
+    const fill = document.getElementById('efet-fill');
+    fill.style.width = s + '%';
+    fill.style.background = s < 40 ? '#c0392b' : s < 70 ? '#e0a052' : 'linear-gradient(135deg,#bf953f,#fcf6ba,#b38728)';
+    document.getElementById('efet-pct').innerText = s + '%';
+    const h = document.getElementById('efet-hint');
+    if (s < 25) h.innerText = "Selecione o tipo de benefício para começar.";
+    else if (s < 50) h.innerText = "Adicione objetivo e mais dados do caso.";
+    else if (s < 70) h.innerText = "Bom! Forneça mais dados (CNIS, datas, laudos) para máxima precisão.";
+    else if (s < 90) h.innerText = "Excelente base! O prompt terá alto nível de qualidade.";
+    else h.innerText = "🏆 Dados completos. O prompt gerado será de máxima efetividade.";
+}
+
+function limpar() {
+    ['objetivo','segurado','destinatario','fatos'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('tipo-beneficio').selectedIndex = 0;
+    document.getElementById('res-box').style.display = 'none';
+    document.getElementById('charSpan').innerText = '0';
+    document.getElementById('efet-fill').style.width = '0%';
+    document.getElementById('efet-pct').innerText = '0%';
+    document.getElementById('efet-hint').innerText = 'Selecione o tipo de benefício e preencha os dados.';
+    document.querySelectorAll('.tom-btn').forEach(b => b.classList.toggle('active', b.dataset.tom === 'tecnico'));
+    tomSel = 'tecnico'; showToast("CAMPOS LIMPOS");
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PDF
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function lerPDF(input) {
+    const file = input.files[0]; if (!file) return;
+    showToast("LENDO PDF...");
+    const reader = new FileReader();
+    reader.onload = async function () {
+        const ta = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument(ta).promise;
+        let text = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const c = await page.getTextContent();
+            text += c.items.map(s => s.str).join(" ") + "\n";
+        }
+        const el = document.getElementById('fatos');
+        el.value = (el.value ? el.value + "\n\n--- PDF IMPORTADO ---\n\n" : "") + text;
+        countChars(); calcEfet(); showToast("PDF IMPORTADO!");
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// REGRAS POR TIPO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const persona = "advogado(a) previdenciarista sênior com 20 anos de experiência exclusiva em Direito Previdenciário brasileiro, com domínio absoluto da Lei 8.213/91, Lei 8.212/91, EC 103/2019, Decreto 3.048/99, Portarias e Instruções Normativas do INSS, e da jurisprudência do STJ, STF e TNU";
+
+const regras = {
+    aposIdade:       "- Base: art. 48 da Lei 8.213/91 (mín. 180 contrib.; 65 anos H / 62 anos M após EC 103).\n- Verificar carência, qualidade de segurado e período em aberto no CNIS.\n- Se faltar nº de contribuições: ⚠ REVISÃO NECESSÁRIA — carência não informada.",
+    aposIdadeRural:  "- Base: art. 48 §§1º e 2º da Lei 8.213/91 (60 H / 55 M, 180 meses de atividade rural).\n- Analisar documentos de trabalho rural: DAP, notas fiscais, FUNRURAL, declarações.\n- Se faltar prova de atividade rural: ⚠ REVISÃO NECESSÁRIA — documentação rural ausente.",
+    aposTempo:       "- Regra extinta pela EC 103/2019. Verificar direito adquirido (35H/30M) antes de 13/11/2019.\n- Base: art. 201 CF (redação anterior); art. 3º da EC 103/2019.\n- Se não houver extrato de contribuições completo: ⚠ REVISÃO NECESSÁRIA.",
+    aposTransicao:   "- EC 103/2019: analisar TODAS as regras de transição: pedágio 50%, pedágio 100%, pontos, idade progressiva, idade+tempo.\n- Identificar qual é mais vantajosa para o segurado.\n- Base: arts. 15 a 20 da EC 103/2019.\n- Se faltar CNIS completo: ⚠ REVISÃO NECESSÁRIA — histórico de contribuições incompleto.",
+    aposProgramada:  "- Nova regra: 65H/62M + 20 anos contrib. H / 15 anos M.\n- Verificar tempo exato e calcular DIB mais favorável.\n- Base: art. 201 §7º CF c/c EC 103/2019.",
+    aposPontos:      "- Regra de pontos progressiva (2024: H=103/M=93; cresce 1 ponto/ano até 2033: H=105/M=100).\n- Verificar ano do pedido e tabela de pontos correspondente.\n- Base: art. 17 da EC 103/2019.",
+    aposEspecial:    "- Base: arts. 57 e 58 da Lei 8.213/91; Decreto 3.048/99 Anexo IV; IN PRES/INSS nº 128/2022.\n- Verificar PPP e LTCAT; agentes nocivos, CBO do período, nível de exposição.\n- 15, 20 ou 25 anos conforme agente; conversão por fatores para tempo especial+comum.\n- Se faltar PPP ou LTCAT: ⚠ REVISÃO NECESSÁRIA — documento técnico ausente.",
+    aposIncapacidade:"- Base: arts. 42 a 47 da Lei 8.213/91.\n- Verificar laudo pericial, doenças do art. 151 (isentas de carência), qualidade de segurado.\n- Distinguir incapacidade total e definitiva (apos.) de temporária (auxílio).\n- Se faltar laudo médico: ⚠ REVISÃO NECESSÁRIA.",
+    auxIncapacidade: "- Base: arts. 59 a 63 da Lei 8.213/91.\n- Carência: 12 contribuições, salvo doenças do art. 151 (sem carência).\n- Verificar: DII (Data de Início da Incapacidade), laudos, qualidade de segurado.\n- Se faltar laudo: ⚠ REVISÃO NECESSÁRIA — laudo médico ausente.",
+    auxAcidente:     "- Base: art. 86 da Lei 8.213/91.\n- Requer: acidente de qualquer natureza + sequela definitiva + redução da capacidade laboral.\n- Verificar CAT e laudo de sequela.\n- Se faltar laudo de sequela: ⚠ REVISÃO NECESSÁRIA.",
+    pensao:          "- Base: arts. 74 a 79 da Lei 8.213/91 c/c EC 103/2019.\n- Verificar qualidade de segurado do falecido, vínculo de dependência e legislação vigente na data do óbito.\n- EC 103/2019 alterou a duração da pensão conforme data do óbito.\n- Se faltar certidão de óbito ou prova de dependência: ⚠ REVISÃO NECESSÁRIA.",
+    salMaternidade:  "- Base: arts. 71 a 73 da Lei 8.213/91.\n- Empregada: sem carência. C. Individual/Facultativa: 10 contribuições.\n- Verificar qualidade de segurada e salários de contribuição para cálculo.",
+    salFamilia:      "- Base: arts. 65 a 70 da Lei 8.213/91.\n- Verificar limite de renda e filhos menores de 14 anos.",
+    bpcIdoso:        "- Base: Lei 8.742/93 (LOAS), art. 34; Decreto 6.214/2007.\n- Critério: 65 anos + renda familiar per capita ≤ 1/4 SM.\n- NÃO é benefício do RGPS — não exige contribuição.\n- TNU Súmula 11: possibilidade de excluir outros BPC do cálculo de renda.\n- Se faltar comprovante de renda familiar: ⚠ REVISÃO NECESSÁRIA.",
+    bpcDeficiente:   "- Base: Lei 8.742/93 (LOAS); Decreto 6.214/2007; Lei 13.146/2015.\n- Critério: deficiência de longo prazo + impedimentos para participação plena + renda ≤ 1/4 SM.\n- Laudo médico e avaliação social obrigatórios.\n- Se faltar laudo ou avaliação: ⚠ REVISÃO NECESSÁRIA.",
+    recursos:        "- Identificar CADA fundamento do indeferimento na carta do INSS e atacar ponto a ponto.\n- Base: Dec. 3.048/99; Lei 9.784/99; IN PRES/INSS nº 128/2022.\n- Prazo: 30 dias da ciência do indeferimento.\n- Se faltar carta de indeferimento: ⚠ REVISÃO NECESSÁRIA — fundamentação do indeferimento não fornecida.",
+    jef:             "- Base: Lei 10.259/2001; Lei 9.099/95 (subsidiária); Súmulas STJ/TNU pertinentes.\n- Verificar: valor da causa, competência do JEF, documentos essenciais.\n- Estrutura: qualificação → fatos → fundamentos legais e jurisprudenciais → pedido.",
+    revisao:         "- Identificar tipo de revisão: DIB, fator previdenciário, salários de contribuição, tempo especial, etc.\n- Verificar decadência: art. 103 da Lei 8.213/91 — 10 anos para revisão.\n- Se faltar carta de concessão original: ⚠ REVISÃO NECESSÁRIA.",
+    reconhecimento:  "- Base: arts. 57 e 58 da Lei 8.213/91; Decreto 3.048/99.\n- Exige PPP e LTCAT; verificar agente nocivo, nível de exposição, CBO do período.\n- Analisar conversão de tempo especial em comum se aplicável.",
+    calculo:         "- Identificar: DIB, DER, fator previdenciário (se aplicável), média de salários de contribuição (PBC), alíquota de cálculo.\n- Regras: arts. 28 a 35 da Lei 8.213/91; EC 103/2019 para RMI progressiva.\n- NUNCA invente valores; use somente os salários do CNIS fornecido.",
+    planejamento:    "- Analisar: tempo atual, carência, regras de transição EC 103/2019, melhor data de requerimento.\n- Simular múltiplos cenários (pontos, idade+tempo, especial, LOAS) com os dados disponíveis.\n- Se faltar CNIS: ⚠ REVISÃO NECESSÁRIA — extrato de contribuições indispensável para simulação.",
+    outro:           "- Analise com rigor técnico previdenciário o tema descrito.\n- Cite base legal pertinente: Lei 8.213/91, Lei 8.212/91, EC 103/2019 ou outra aplicável.\n- Se faltar dado essencial: ⚠ REVISÃO NECESSÁRIA — [descrever o dado ausente]."
+};
+
+const labTipo = {
+    aposIdade:"Aposentadoria por Idade (Urbana)", aposIdadeRural:"Aposentadoria por Idade Rural",
+    aposTempo:"Apos. por Tempo de Contribuição (pré-EC 103)", aposTransicao:"Apos. por Regras de Transição (EC 103/2019)",
+    aposProgramada:"Aposentadoria Programada (pós-EC 103)", aposPontos:"Aposentadoria por Pontos",
+    aposEspecial:"Aposentadoria Especial", aposIncapacidade:"Apos. por Incapacidade Permanente",
+    auxIncapacidade:"Auxílio por Incapacidade Temporária", auxAcidente:"Auxílio-Acidente",
+    pensao:"Pensão por Morte", salMaternidade:"Salário-Maternidade", salFamilia:"Salário-Família",
+    bpcIdoso:"BPC — Idoso (LOAS)", bpcDeficiente:"BPC — Pessoa com Deficiência (LOAS)",
+    recursos:"Recurso Administrativo INSS / CRPS", jef:"Ação no JEF",
+    revisao:"Revisão de Benefício", reconhecimento:"Reconhecimento de Tempo Especial",
+    calculo:"Cálculo de RMI / DIB", planejamento:"Planejamento Previdenciário", outro:"Outro"
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXECUTAR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function executar() {
+    const tbEl = document.getElementById('tipo-beneficio');
+    const fatosEl = document.getElementById('fatos');
+    const tbVal = tbEl.value, fatosVal = fatosEl.value.trim();
+    let ok = true;
+    if (!tbVal) { tbEl.classList.add('invalid'); ok = false; }
+    if (!fatosVal) { fatosEl.style.borderColor = '#e05252'; ok = false; }
+    if (!ok) { showToast("⚠ PREENCHA OS CAMPOS OBRIGATÓRIOS"); setTimeout(() => { tbEl.classList.remove('invalid'); fatosEl.style.borderColor = ''; }, 2500); return; }
+
+    const pa = document.getElementById('prog-area');
+    pa.style.display = 'block';
+    ['b1','b2','b3'].forEach(id => document.getElementById(id).style.width = '0%');
+    ['v1','v2','v3'].forEach(id => document.getElementById(id).innerText = '0%');
+    document.getElementById('res-box').style.display = 'none';
+
+    let p1=0,p2=0,p3=0;
+    const itv = setInterval(() => {
+        if (p1 < 100) { p1 = Math.min(100,p1+8); document.getElementById('b1').style.width=p1+'%'; document.getElementById('v1').innerText=p1+'%'; }
+        if (p1 > 40 && p2 < 100) { p2 = Math.min(100,p2+10); document.getElementById('b2').style.width=p2+'%'; document.getElementById('v2').innerText=p2+'%'; }
+        if (p2 > 60 && p3 < 100) { p3 = Math.min(100,p3+12); document.getElementById('b3').style.width=p3+'%'; document.getElementById('v3').innerText=p3+'%'; }
+        if (p1>=100 && p2>=100 && p3>=100) {
+            clearInterval(itv);
+            gerarPrompt(tbVal, fatosVal);
+            setTimeout(() => pa.style.display='none', 600);
+        }
+    }, 55);
+}
+
+function gerarPrompt(tbVal, fatosVal) {
+    const objetivo    = document.getElementById('objetivo').value.trim();
+    const segurado    = document.getElementById('segurado').value.trim();
+    const destinat    = document.getElementById('destinatario').value.trim();
+    const tipoLabel   = labTipo[tbVal] || 'Matéria Previdenciária';
+    const regrasTipo  = regras[tbVal] || regras.outro;
+
+    const prompt =
+`╔══════════════════════════════════════════════════════════╗
+║   CÁSSIA PROMPT V9 — PREVIDENCIÁRIO EDITION             ║
+║   SISTEMA ANTI-ALUCINAÇÃO ATIVO                         ║
+╚══════════════════════════════════════════════════════════╝
+
+▌ PERSONA
+Você é ${persona}.
+
+▌ TAREFA
+• Tipo de benefício / ação : ${tipoLabel}
+• Objetivo do documento    : ${objetivo || "Analisar o caso e orientar sobre a melhor estratégia jurídica previdenciária"}
+• Segurado / Cliente       : ${segurado || "Conforme dados fornecidos abaixo"}
+• Destinatário             : ${destinat || "Conforme contexto do caso"}
+• Tom da escrita           : ${tomDesc[tomSel]}
+
+▌ REGRAS ESPECÍFICAS PARA ESTE TIPO DE CASO
+${regrasTipo}
+
+▌ DIRETRIZES ABSOLUTAS — LEIA ANTES DE ESCREVER QUALQUER COISA
+
+1. LEIA COMPLETAMENTE todos os dados fornecidos abaixo antes de redigir qualquer linha.
+2. TRABALHE EXCLUSIVAMENTE com as informações contidas nos dados fornecidos.
+3. NUNCA invente artigos, números de processo, datas, valores, laudos, nomes ou qualquer outro dado não presente nos fatos.
+4. NUNCA invente jurisprudência, súmulas ou decisões que não existam ou não sejam notoriamente conhecidas na área.
+5. Se uma informação essencial estiver AUSENTE, escreva EXATAMENTE:
+   ⚠ REVISÃO NECESSÁRIA — [descreva precisamente qual dado está faltando e por que é necessário]
+6. Adapte vocabulário e profundidade técnica ao tom de escrita definido acima.
+7. Entregue o documento COMPLETO, estruturado e pronto para uso profissional.
+8. COMECE DIRETAMENTE pelo conteúdo, sem introduções desnecessárias.
+
+▌ BASE LEGAL DE REFERÊNCIA (use apenas o que for aplicável ao caso)
+• Lei 8.213/91  — Plano de Benefícios da Previdência Social
+• Lei 8.212/91  — Custeio da Seguridade Social
+• Decreto 3.048/99 — Regulamento da Previdência Social
+• EC 103/2019   — Reforma da Previdência
+• IN PRES/INSS nº 128/2022 — Regulamento de Benefícios
+• Lei 8.742/93  — LOAS (BPC)
+• Lei 10.259/2001 — Juizados Especiais Federais
+• Jurisprudência STJ, STF e TNU (citar APENAS se notoriamente reconhecida e diretamente aplicável)
+
+▌ DADOS FORNECIDOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${fatosVal}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[FIM DO PROMPT — INICIE O DOCUMENTO AGORA]`;
+
+    document.getElementById('res').value = prompt;
+    document.getElementById('res-box').style.display = 'flex';
+    setTimeout(() => document.getElementById('res-box').scrollIntoView({ behavior:'smooth', block:'start' }), 300);
+
+    const now = new Date();
+    const data = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const HKEY = 'cassia_prev_hist';
+    let hist = JSON.parse(localStorage.getItem(HKEY) || '[]');
+    hist.unshift({ tbVal, tipoLabel, objetivo, segurado, destinat, fatosVal, tom:tomSel, prompt, data });
+    localStorage.setItem(HKEY, JSON.stringify(hist.slice(0,4)));
+    renderHistorico();
+    showToast("PROMPT GERADO!");
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// COPIAR / WORD / NOVO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function copiarRes() {
+    const texto = document.getElementById('res').value;
+    const btn = document.getElementById('btnCopy');
+    const ok = () => { btn.innerText="✓ COPIADO!"; btn.classList.add('copied'); showToast("PROMPT COPIADO!"); setTimeout(()=>{btn.innerText="📋 COPIAR PROMPT";btn.classList.remove('copied');},2200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok).catch(()=>fbCopy(ok));
+    else fbCopy(ok);
+}
+function fbCopy(cb) { const ta=document.getElementById('res'); ta.select(); ta.setSelectionRange(0,99999); try{document.execCommand('copy');cb();}catch(e){showToast("COPIE MANUALMENTE");} }
+
+function exportarWord() {
+    const blob = new Blob(['\ufeff', document.getElementById('res').value], {type:'application/msword'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='CASSIA_PREV_V9.doc'; a.click();
+    showToast("ARQUIVO EXPORTADO!");
+}
+
+function novaConsulta() { limpar(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HISTÓRICO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderHistorico() {
+    const HKEY = 'cassia_prev_hist';
+    const hist = JSON.parse(localStorage.getItem(HKEY) || '[]');
+    const sec = document.getElementById('hist-section');
+    const lista = document.getElementById('hist-lista');
+    if (!hist.length) { sec.style.display='none'; return; }
+    sec.style.display = 'block'; lista.innerHTML = '';
+    hist.forEach(item => {
+        const d = document.createElement('div'); d.className = 'hist-item';
+        d.innerHTML = `<div><div class="hist-acao">${item.tipoLabel}</div><div class="hist-meta">${item.segurado||'sem nome'} · ${item.data}</div></div><span class="hist-arrow">↗</span>`;
+        d.onclick = () => restaurar(item);
+        lista.appendChild(d);
+    });
+}
+function restaurar(item) {
+    document.getElementById('tipo-beneficio').value = item.tbVal;
+    document.getElementById('objetivo').value = item.objetivo||'';
+    document.getElementById('segurado').value = item.segurado||'';
+    document.getElementById('destinatario').value = item.destinat||'';
+    document.getElementById('fatos').value = item.fatosVal||'';
+    document.querySelectorAll('.tom-btn').forEach(b => b.classList.toggle('active', b.dataset.tom===item.tom));
+    tomSel = item.tom;
+    document.getElementById('res').value = item.prompt;
+    document.getElementById('res-box').style.display = 'flex';
+    countChars(); calcEfet(); showToast("CASO RESTAURADO!");
+    setTimeout(() => document.getElementById('res-box').scrollIntoView({behavior:'smooth'}), 200);
+}
+</script>
+</body>
+</html>
