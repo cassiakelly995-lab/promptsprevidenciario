@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREVIDENCIÁRIO V9 | CÁSSIA PROMPT</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -152,16 +150,7 @@
 <body>
 <div id="toast"></div>
 
-<div id="tela-bloqueio">
-    <div class="bloq-box">
-        <div class="bloq-logo">Cássia Prompt</div>
-        <div class="bloq-ico">⚖️</div>
-        <div class="bloq-titulo" id="bTit">Verificando Acesso...</div>
-        <div class="bloq-msg" id="bMsg">Aguarde enquanto validamos sua licença.</div>
-    </div>
-</div>
-
-<div id="app">
+<div id="app" style="display:flex">
     <div class="topbar">
         <div>
             <div class="topbar-logo">Cássia Prompt</div>
@@ -329,44 +318,12 @@
 
 <script>
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// FIREBASE — BANCO EXCLUSIVO PREVIDENCIÁRIO
+// INICIALIZAÇÃO
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const firebaseConfig = {
-    apiKey: "AIzaSyCvQ5osv0sxI8PVH2aUspp1PMtS6QkR3Y0",
-    authDomain: "cassia-previdenciario.firebaseapp.com",
-    databaseURL: "https://cassia-previdenciario-default-rtdb.firebaseio.com",
-    projectId: "cassia-previdenciario",
-    storageBucket: "cassia-previdenciario.firebasestorage.app",
-    messagingSenderId: "451379526206",
-    appId: "1:451379526206:web:892831ee31d91462b42f6f"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const REF = 'acessos_prev';
-const FIXOS_APP = ["Dra_Valeria"];
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// VERIFICAÇÃO DE ACESSO
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function verificarAcesso() {
-    const id = new URLSearchParams(window.location.search).get('id');
-    if (!id) { bloqueado("ACESSO NEGADO", "Nenhum código de acesso encontrado.<br>Solicite seu link autorizado."); return; }
-    db.ref(REF + '/' + id).once('value').then(snap => {
-        if (snap.exists()) {
-            const d = snap.val();
-            db.ref(REF + '/' + id).update({ ultimoUso: Date.now(), usos: (d.usos || 0) + 1 });
-            document.getElementById('footer-nome').innerText = d.nome || 'LICENCIADO';
-            const bl = document.getElementById('tela-bloqueio');
-            bl.style.transition = '.6s'; bl.style.opacity = '0';
-            setTimeout(() => { bl.style.display = 'none'; const a = document.getElementById('app'); a.style.display = 'flex'; }, 600);
-            renderHistorico();
-        } else {
-            bloqueado("ACESSO REVOGADO", "Seu acesso foi desativado.<br>Entre em contato com a administradora.");
-        }
-    }).catch(() => bloqueado("ERRO DE CONEXÃO", "Verifique sua internet e tente novamente."));
-}
-function bloqueado(t, m) { document.getElementById('bTit').innerText = t; document.getElementById('bMsg').innerHTML = m; }
-setTimeout(verificarAcesso, 800);
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('footer-nome').innerText = 'DRA. VALÉRIA';
+    renderHistorico();
+});
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // UTILIDADES
@@ -489,9 +446,48 @@ const labTipo = {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CONFIGURAÇÃO GEMINI
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const GEMINI_KEY = "AIzaSyBpclXYDhllih-_6KxRYY_8Wba0AyA2Uz0";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+async function buscarJurisprudencia(tipoLabel, fatosVal) {
+    const pergunta = `Você é um especialista em Direito Previdenciário Brasileiro com dever absoluto de veracidade jurídica.
+
+⛔ REGRA ABSOLUTA — PROIBIÇÃO TOTAL DE INVENÇÃO:
+- É TERMINANTEMENTE PROIBIDO inventar, supor, aproximar ou "completar" qualquer número de processo, acórdão, súmula, decisão ou ementa.
+- Se não tiver CERTEZA ABSOLUTA da existência real de uma jurisprudência, NÃO A INCLUA. Silêncio é obrigatório quando há dúvida.
+- NUNCA cite um número de processo que não seja 100% verificável e real.
+- NUNCA parafraseie ou invente uma ementa. Use apenas ementas que existam de fato.
+- Se não houver jurisprudência real e conhecida para algum tribunal, escreva exatamente: "• [TRIBUNAL] — Nenhuma súmula ou jurisprudência notória identificada para este tipo de caso."
+- Prefira SEMPRE súmulas (têm número fixo e verificável) a acórdãos isolados.
+
+✅ INCLUA APENAS:
+- Súmulas numeradas do STJ, STF e TNU com enunciado real e conhecido
+- Acórdãos paradigmáticos amplamente citados e verificáveis
+- Orientações normativas do CRPS/INSS notoriamente conhecidas
+
+Tipo de caso: ${tipoLabel}
+Dados do caso: ${fatosVal.substring(0, 800)}
+
+FORMATO OBRIGATÓRIO:
+• [TRIBUNAL] [Súmula nº X / Acórdão nº X] — [Enunciado/ementa real] — [Por que se aplica a este caso]
+
+Máximo 8 itens. Apenas o que for 100% real e verificável. Seja direto, sem introduções.`;
+
+    const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: pergunta }] }] })
+    });
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // EXECUTAR
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function executar() {
+async function executar() {
     const tbEl = document.getElementById('tipo-beneficio');
     const fatosEl = document.getElementById('fatos');
     const tbVal = tbEl.value, fatosVal = fatosEl.value.trim();
@@ -506,30 +502,58 @@ function executar() {
     ['v1','v2','v3'].forEach(id => document.getElementById(id).innerText = '0%');
     document.getElementById('res-box').style.display = 'none';
 
-    let p1=0,p2=0,p3=0;
+    // Animar barras enquanto busca jurisprudência
+    let p1=0, p2=0, p3=0, parou=false;
     const itv = setInterval(() => {
-        if (p1 < 100) { p1 = Math.min(100,p1+8); document.getElementById('b1').style.width=p1+'%'; document.getElementById('v1').innerText=p1+'%'; }
-        if (p1 > 40 && p2 < 100) { p2 = Math.min(100,p2+10); document.getElementById('b2').style.width=p2+'%'; document.getElementById('v2').innerText=p2+'%'; }
-        if (p2 > 60 && p3 < 100) { p3 = Math.min(100,p3+12); document.getElementById('b3').style.width=p3+'%'; document.getElementById('v3').innerText=p3+'%'; }
-        if (p1>=100 && p2>=100 && p3>=100) {
-            clearInterval(itv);
-            gerarPrompt(tbVal, fatosVal);
-            setTimeout(() => pa.style.display='none', 600);
-        }
+        if (p1 < 95) { p1 = Math.min(95,p1+6); document.getElementById('b1').style.width=p1+'%'; document.getElementById('v1').innerText=p1+'%'; }
+        if (p1 > 40 && p2 < 95) { p2 = Math.min(95,p2+7); document.getElementById('b2').style.width=p2+'%'; document.getElementById('v2').innerText=p2+'%'; }
+        if (p2 > 60 && p3 < 90) { p3 = Math.min(90,p3+5); document.getElementById('b3').style.width=p3+'%'; document.getElementById('v3').innerText=p3+'%'; }
     }, 55);
+
+    showToast("🔍 BUSCANDO JURISPRUDÊNCIAS...");
+
+    let jurisprudencia = null;
+    try {
+        jurisprudencia = await buscarJurisprudencia(labTipo[tbVal] || tbVal, fatosVal);
+    } catch(e) {
+        jurisprudencia = null;
+    }
+
+    clearInterval(itv);
+    ['b1','b2','b3'].forEach(id => document.getElementById(id).style.width='100%');
+    ['v1','v2','v3'].forEach(id => document.getElementById(id).innerText='100%');
+
+    setTimeout(() => {
+        pa.style.display = 'none';
+        gerarPrompt(tbVal, fatosVal, jurisprudencia);
+    }, 400);
 }
 
-function gerarPrompt(tbVal, fatosVal) {
+function gerarPrompt(tbVal, fatosVal, jurisprudencia) {
     const objetivo    = document.getElementById('objetivo').value.trim();
     const segurado    = document.getElementById('segurado').value.trim();
     const destinat    = document.getElementById('destinatario').value.trim();
     const tipoLabel   = labTipo[tbVal] || 'Matéria Previdenciária';
     const regrasTipo  = regras[tbVal] || regras.outro;
 
+    const blocoJuris = jurisprudencia
+        ? `▌ JURISPRUDÊNCIA APLICÁVEL — STJ · STF · TNU · CRPS/INSS
+⛔ ATENÇÃO ABSOLUTA: Use SOMENTE as jurisprudências listadas abaixo. É TERMINANTEMENTE PROIBIDO inventar, adaptar, aproximar ou citar qualquer súmula, acórdão ou decisão que não esteja explicitamente listada aqui. Se nenhuma das listadas se aplicar ao ponto específico do documento, NÃO cite jurisprudência nenhuma — omissão é obrigatória quando há dúvida.
+
+${jurisprudencia}
+
+`
+        : `▌ JURISPRUDÊNCIA APLICÁVEL
+⛔ ATENÇÃO ABSOLUTA: É TERMINANTEMENTE PROIBIDO inventar, supor ou citar qualquer súmula, acórdão ou decisão que você não tenha certeza absoluta de existência real. Se não houver jurisprudência notória e verificável para o ponto em questão, NÃO cite — omissão é obrigatória.
+• Citar apenas súmulas e acórdãos 100% verificáveis do STJ, STF e TNU.
+• CRPS/INSS: apenas orientações normativas notoriamente conhecidas.
+
+`;
+
     const prompt =
 `╔══════════════════════════════════════════════════════════╗
 ║   CÁSSIA PROMPT V9 — PREVIDENCIÁRIO EDITION             ║
-║   SISTEMA ANTI-ALUCINAÇÃO ATIVO                         ║
+║   SISTEMA ANTI-ALUCINAÇÃO + JURISPRUDÊNCIA ATIVA        ║
 ╚══════════════════════════════════════════════════════════╝
 
 ▌ PERSONA
@@ -550,7 +574,7 @@ ${regrasTipo}
 1. LEIA COMPLETAMENTE todos os dados fornecidos abaixo antes de redigir qualquer linha.
 2. TRABALHE EXCLUSIVAMENTE com as informações contidas nos dados fornecidos.
 3. NUNCA invente artigos, números de processo, datas, valores, laudos, nomes ou qualquer outro dado não presente nos fatos.
-4. NUNCA invente jurisprudência, súmulas ou decisões que não existam ou não sejam notoriamente conhecidas na área.
+4. Use a jurisprudência listada abaixo SOMENTE se for aplicável ao caso concreto. Não force encaixe.
 5. Se uma informação essencial estiver AUSENTE, escreva EXATAMENTE:
    ⚠ REVISÃO NECESSÁRIA — [descreva precisamente qual dado está faltando e por que é necessário]
 6. Adapte vocabulário e profundidade técnica ao tom de escrita definido acima.
@@ -565,9 +589,8 @@ ${regrasTipo}
 • IN PRES/INSS nº 128/2022 — Regulamento de Benefícios
 • Lei 8.742/93  — LOAS (BPC)
 • Lei 10.259/2001 — Juizados Especiais Federais
-• Jurisprudência STJ, STF e TNU (citar APENAS se notoriamente reconhecida e diretamente aplicável)
 
-▌ DADOS FORNECIDOS
+${blocoJuris}▌ DADOS FORNECIDOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${fatosVal}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -585,7 +608,7 @@ ${fatosVal}
     hist.unshift({ tbVal, tipoLabel, objetivo, segurado, destinat, fatosVal, tom:tomSel, prompt, data });
     localStorage.setItem(HKEY, JSON.stringify(hist.slice(0,4)));
     renderHistorico();
-    showToast("PROMPT GERADO!");
+    showToast(jurisprudencia ? "✅ PROMPT + JURISPRUDÊNCIAS GERADOS!" : "✅ PROMPT GERADO!");
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
